@@ -103,7 +103,7 @@ gha-artifact-client get-signed-url package.tar.gz
 point in time as a timezone-aware ISO 8601 datetime. The two flags are mutually
 exclusive.
 
-Both subcommands accept `--json` to emit machine-readable output:
+All subcommands accept `--json` to emit machine-readable output:
 
 ```bash
 gha-artifact-client upload dist/package.tar.gz --json
