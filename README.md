@@ -191,6 +191,24 @@ jobs:
 * `ACTIONS_RESULTS_URL` for github.com on hosted runners, at the time of
   writing, is `https://results-receiver.actions.githubusercontent.com/`.
 
+## Notes on Names / IDs and Signed URLs
+
+* The reason the API seems to use names as the ID is that the blob backend
+  identifies artifacts by name. The returned IDs are only relevant for the REST
+  API.
+
+* Uploading an artifact with the same name as an existing one fails.
+
+* Deleting an artifact frees the name again, allowing you to upload a new
+  artifact with the same name.
+
+* Signed URLs only sign the backend blob URL, which is the same for two
+  artifacts with the same name. This means that if you upload an artifact, get a
+  signed URL for it, delete the artifact, and then upload a new artifact with
+  the same name, the previously obtained signed URL will work for the new
+  artifact. Be cautious of this if you are using signed URLs and reusing
+  artifact names.
+
 ## Development
 
 - Install Python dependencies with `uv sync`.
