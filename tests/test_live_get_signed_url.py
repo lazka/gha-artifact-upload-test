@@ -33,3 +33,5 @@ def test_live_get_signed_artifact_url_returns_https_url(tmp_path: Path) -> None:
 
     assert isinstance(result, ArtifactSignedURLResult)
     assert result.url.startswith("https://")
+
+    api.delete_artifact(artifact_name)

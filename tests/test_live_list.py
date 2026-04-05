@@ -47,3 +47,5 @@ def test_live_list_returns_uploaded_artifact(tmp_path: Path) -> None:
     assert a.size > 0
     assert a.created_at is not None
     assert a.digest is not None
+
+    api.delete_artifact(artifact_name)

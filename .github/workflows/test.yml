@@ -82,6 +82,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           uv run pytest -m integration
+          uv run gha-artifact-client delete "gha-artifact-upload-integration-${{ github.run_id }}.txt"
 
       - name: Live CLI test
         env:
@@ -119,6 +120,7 @@ jobs:
           url=$(uv run gha-artifact-client get-signed-url --json cli-signed-url-test | jq -r '.url')
           echo "Signed URL: $url"
           curl --fail "$url"
+          uv run gha-artifact-client delete cli-signed-url-test
 
       - name: Live CLI list test
         env:
@@ -137,9 +139,13 @@ jobs:
           path: downloaded/test-txt
 
       - name: Verify downloaded test.txt
+        env:
+          ACTIONS_RUNTIME_TOKEN: ${{ steps.vars.outputs.ACTIONS_RUNTIME_TOKEN }}
+          ACTIONS_RESULTS_URL: ${{ steps.vars.outputs.ACTIONS_RESULTS_URL }}
         run: |
           test -f downloaded/test-txt/test.txt
           grep -q "cli test" downloaded/test-txt/test.txt
+          uv run gha-artifact-client delete test.txt
 
       - name: Download zip artifact via actions/download-artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -148,9 +154,13 @@ jobs:
           path: downloaded/cli-test-zip
 
       - name: Verify zip artifact was unzipped by download-artifact
+        env:
+          ACTIONS_RUNTIME_TOKEN: ${{ steps.vars.outputs.ACTIONS_RUNTIME_TOKEN }}
+          ACTIONS_RESULTS_URL: ${{ steps.vars.outputs.ACTIONS_RESULTS_URL }}
         run: |
           test -f downloaded/cli-test-zip/zip_inner.txt
           grep -q "zip contents" downloaded/cli-test-zip/zip_inner.txt
+          uv run gha-artifact-client delete cli-test-zip
 
   build:
     runs-on: ubuntu-latest
