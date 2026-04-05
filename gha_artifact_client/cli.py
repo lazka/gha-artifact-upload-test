@@ -7,7 +7,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 
-from .client import ArtifactClientApi, ArtifactDeleteResult
+from .client import ArtifactClientApi, ArtifactDeleteResult, ArtifactSignedURLResult
 from .exceptions import ArtifactClientError
 
 
@@ -130,6 +130,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output result as JSON instead of human-readable text",
     )
 
+    get_signed_url_parser = subparsers.add_parser(
+        "get-signed-url",
+        help="Get a pre-signed download URL for a GitHub Actions artifact.",
+        description=(
+            "Return a pre-signed HTTPS URL for direct download of a GitHub Actions"
+            " artifact from storage."
+        ),
+    )
+    get_signed_url_parser.add_argument("name", help="Name of the artifact")
+    get_signed_url_parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output result as JSON instead of human-readable text",
+    )
+
     return parser
 
 
@@ -182,6 +198,23 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps({"id": result_d.id}))
         else:
             print(f"Deleted artifact '{args.name}' (id: {result_d.id}).")
+
+    elif args.subcommand == "get-signed-url":
+        try:
+            api = ArtifactClientApi(
+                runtime_token=args.runtime_token,
+                results_url=args.results_url,
+                node_executable=args.node_executable,
+            )
+            result_s: ArtifactSignedURLResult = api.get_signed_artifact_url(args.name)
+        except ArtifactClientError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+
+        if args.json:
+            print(json.dumps({"url": result_s.url}))
+        else:
+            print(f"Signed URL for '{args.name}': {result_s.url}")
 
     return 0
 

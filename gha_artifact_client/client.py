@@ -65,6 +65,16 @@ class ArtifactDeleteResult:
     """The numeric artifact ID of the deleted artifact, e.g. ``42``."""
 
 
+@dataclass(frozen=True, slots=True)
+class ArtifactSignedURLResult:
+    """Result of a successful signed URL request."""
+
+    url: str
+    """The pre-signed HTTPS URL that can be used to download the artifact
+    blob directly from storage, e.g.
+    ``"https://storage.example.com/artifact?sig=..."``."""
+
+
 class ArtifactClientApi:
     """Client for GitHub Actions artifacts.
 
@@ -351,3 +361,32 @@ class ArtifactClientApi:
 
         assert raw_id is not None
         return ArtifactDeleteResult(id=int(raw_id))
+
+    def get_signed_artifact_url(self, name: str) -> ArtifactSignedURLResult:
+        """Return a pre-signed download URL for a GitHub Actions artifact.
+
+        Retrieves a short-lived HTTPS URL that allows direct download of the
+        artifact blob from storage without any further authentication. The URL
+        is signed by the backend and typically expires after a short period.
+
+        ``name`` is the artifact name as it appears in the workflow run.
+        """
+
+        payload: dict[str, object] = {
+            "action": "get-signed-url",
+            "name": name,
+        }
+
+        response = self._run_node_wrapper(payload)
+
+        raw_url = response.get("url")
+        if raw_url is None:
+            raise NodeWrapperExecutionError(
+                "Artifact get-signed-url node wrapper response missing field: url",
+                returncode=0,
+                stderr="",
+                stdout="",
+            )
+
+        assert raw_url is not None
+        return ArtifactSignedURLResult(url=str(raw_url))

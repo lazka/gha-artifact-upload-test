@@ -29,7 +29,14 @@ const ERROR_PREFIX = 'GHA_ARTIFACT_CLIENT_ERROR:'
  */
 
 /**
- * @typedef {UploadPayload | DeletePayload} Payload
+ * @typedef {{
+ *   action: 'get-signed-url',
+ *   name: string,
+ * }} GetSignedUrlPayload
+ */
+
+/**
+ * @typedef {UploadPayload | DeletePayload | GetSignedUrlPayload} Payload
  */
 
 /**
@@ -176,12 +183,40 @@ async function deleteArtifact(payload) {
   return { id: Number(deleteArtifactResp.artifactId) }
 }
 
+/**
+ * @param {GetSignedUrlPayload} payload
+ * @returns {Promise<{url: string}>}
+ */
+async function getSignedUrl(payload) {
+  const { name } = payload
+
+  const backendIds = getBackendIdsFromToken()
+  const artifactClient = internalArtifactTwirpClient()
+
+  /** @type {import('@actions/artifact/lib/generated/results/api/v1/artifact.js').GetSignedArtifactURLRequest} */
+  const getSignedUrlReq = {
+    workflowRunBackendId: backendIds.workflowRunBackendId,
+    workflowJobRunBackendId: backendIds.workflowJobRunBackendId,
+    name,
+  }
+
+  const getSignedUrlResp = await artifactClient.GetSignedArtifactURL(getSignedUrlReq)
+  if (!getSignedUrlResp.signedUrl) {
+    throw new InvalidResponseError('GetSignedArtifactURL: response did not return signedUrl')
+  }
+
+  return { url: getSignedUrlResp.signedUrl }
+}
+
 async function main() {
   try {
     const payload = /** @type {Payload} */ (JSON.parse(await readStdin()))
 
     if (payload.action === 'delete') {
       const response = await withStdoutRedirect(() => deleteArtifact(payload))
+      process.stdout.write(`${JSON.stringify(response)}\n`)
+    } else if (payload.action === 'get-signed-url') {
+      const response = await withStdoutRedirect(() => getSignedUrl(payload))
       process.stdout.write(`${JSON.stringify(response)}\n`)
     } else if (payload.action === 'upload') {
       const response = await withStdoutRedirect(() => uploadArtifact(payload))
