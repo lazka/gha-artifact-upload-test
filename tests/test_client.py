@@ -9,33 +9,9 @@ import pytest
 from gha_artifact_client.client import ArtifactClientApi
 from gha_artifact_client.exceptions import UnsupportedEnvironmentError
 
-_TOKEN = "test-token"
-_URL = "https://results.example.test"
+from .conftest import _TOKEN, _URL, make_fake_run
 
-
-def _make_api(**kwargs: Any) -> ArtifactClientApi:
-    defaults = {"runtime_token": _TOKEN, "results_url": _URL}
-    defaults.update(kwargs)
-    return ArtifactClientApi(**defaults)  # type: ignore[arg-type]
-
-
-def _noop_run(
-    args: list[str],
-    *,
-    input: str,
-    env: dict[str, str],
-    text: bool,
-    capture_output: bool,
-    check: bool,
-) -> subprocess.CompletedProcess[str]:
-    """Minimal fake subprocess.run that returns a valid delete response."""
-    del input, text, capture_output, check
-    return subprocess.CompletedProcess(
-        args=args,
-        returncode=0,
-        stdout=json.dumps({"id": 1}),
-        stderr="",
-    )
+_noop_run = make_fake_run(json.dumps({"id": 1}))
 
 
 # ---------------------------------------------------------------------------

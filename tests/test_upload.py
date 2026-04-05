@@ -10,21 +10,13 @@ from typing import Any
 import pytest
 
 from gha_artifact_client.client import (
-    ArtifactClientApi,
     ArtifactUploadResult,
 )
 from gha_artifact_client.exceptions import (
     NodeWrapperExecutionError,
 )
 
-_TOKEN = "test-token"
-_URL = "https://results.example.test"
-
-
-def _make_api(**kwargs: Any) -> ArtifactClientApi:
-    defaults = {"runtime_token": _TOKEN, "results_url": _URL}
-    defaults.update(kwargs)
-    return ArtifactClientApi(**defaults)  # type: ignore[arg-type]
+from .conftest import make_api as _make_api
 
 
 def _success_run(
