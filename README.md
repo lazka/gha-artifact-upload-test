@@ -1,17 +1,17 @@
 # gha-artifact-client
 
-Python wrapper/CLI around `@actions/artifact` for creating, deleting, and
-getting signed download URLs for workflow artifacts from inside a GitHub Actions
-job.
+Python wrapper/CLI around `@actions/artifact` for creating, listing, deleting,
+and getting signed download URLs for workflow artifacts from inside a GitHub
+Actions job.
 
-Allows you to upload, delete, and get signed download URLs for workflow
+Allows you to upload, list, delete, and get signed download URLs for workflow
 artifacts dynamically from Python code without needing to invoke the
 `actions/upload-artifact` action or the GitHub REST API in your workflow yaml.
 
 ## Notes
 
-- Uploading and deleting artifacts only works during the lifetime of a GitHub
-  Actions job.
+- Uploading, listing, and deleting artifacts only works during the lifetime of a
+  GitHub Actions job.
 - Unlike other GitHub API interactions requires a `ACTIONS_RUNTIME_TOKEN` and
   and not a `GITHUB_TOKEN`.
 - Since the artifact API is not publicly documented, this package vendors a
@@ -84,6 +84,12 @@ print(result.id)
 result = api.get_signed_artifact_url("package.tar.gz")
 
 print(result.url)
+
+# List all artifacts for the current workflow job run
+result = api.list_artifacts()
+
+for artifact in result.artifacts:
+    print(artifact.id, artifact.name, artifact.size)
 ```
 
 ### CLI
@@ -97,6 +103,9 @@ gha-artifact-client delete package.tar.gz
 
 # Get a pre-signed download URL
 gha-artifact-client get-signed-url package.tar.gz
+
+# List all artifacts
+gha-artifact-client list
 ```
 
 `--expires-in` takes seconds (int or float). Use `--expires-at` for an exact
@@ -114,6 +123,9 @@ gha-artifact-client delete package.tar.gz --json
 
 gha-artifact-client get-signed-url package.tar.gz --json
 # {"url": "https://..."}
+
+gha-artifact-client list --json
+# {"artifacts": [{"id": 42, "name": "package.tar.gz", "size": 1234, "created_at": "2025-06-01T12:00:00+00:00", "digest": "sha256:..."}]}
 ```
 
 Credentials default to `ACTIONS_RUNTIME_TOKEN` and `ACTIONS_RESULTS_URL` from

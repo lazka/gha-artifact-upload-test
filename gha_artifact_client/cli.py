@@ -7,7 +7,12 @@ import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 
-from .client import ArtifactClientApi, ArtifactDeleteResult, ArtifactSignedURLResult
+from .client import (
+    ArtifactClientApi,
+    ArtifactDeleteResult,
+    ArtifactListResult,
+    ArtifactSignedURLResult,
+)
 from .exceptions import ArtifactClientError
 
 
@@ -146,6 +151,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output result as JSON instead of human-readable text",
     )
 
+    list_parser = subparsers.add_parser(
+        "list",
+        help="List all GitHub Actions artifacts for the current workflow job run.",
+        description=("List all artifacts for the current workflow job run."),
+    )
+    list_parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output result as JSON instead of human-readable text",
+    )
+
     return parser
 
 
@@ -215,6 +232,40 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps({"url": result_s.url}))
         else:
             print(f"Signed URL for '{args.name}': {result_s.url}")
+
+    elif args.subcommand == "list":
+        try:
+            api = ArtifactClientApi(
+                runtime_token=args.runtime_token,
+                results_url=args.results_url,
+                node_executable=args.node_executable,
+            )
+            result_l: ArtifactListResult = api.list_artifacts()
+        except ArtifactClientError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+
+        if args.json:
+            artifacts_json = [
+                {
+                    "id": a.id,
+                    "name": a.name,
+                    "size": a.size,
+                    "created_at": a.created_at.isoformat(),
+                    "digest": a.digest,
+                }
+                for a in result_l.artifacts
+            ]
+            print(json.dumps({"artifacts": artifacts_json}))
+        else:
+            n = len(result_l.artifacts)
+            print(f"{n} artifact(s):")
+            for artifact in result_l.artifacts:
+                print(f"  {artifact.name}")
+                print(f"    ID:         {artifact.id}")
+                print(f"    Size:       {artifact.size} bytes")
+                print(f"    Created at: {artifact.created_at.isoformat()}")
+                print(f"    Digest:     {artifact.digest}")
 
     return 0
 

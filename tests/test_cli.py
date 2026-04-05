@@ -9,6 +9,8 @@ from gha_artifact_client.cli import main
 from gha_artifact_client.client import (
     ArtifactClientApi,
     ArtifactDeleteResult,
+    ArtifactInfo,
+    ArtifactListResult,
     ArtifactSignedURLResult,
     ArtifactUploadResult,
 )
@@ -549,6 +551,164 @@ def test_cli_get_signed_url_missing_credentials_exits_with_error(
     monkeypatch.delenv("ACTIONS_RESULTS_URL", raising=False)
 
     exit_code = main(["get-signed-url", "some-artifact"])
+
+    assert exit_code == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "live GitHub Actions" in output.err
+
+
+# ---------------------------------------------------------------------------
+# list subcommand
+# ---------------------------------------------------------------------------
+
+_LIST_RESULT = ArtifactListResult(
+    artifacts=(
+        ArtifactInfo(
+            id=10,
+            name="build-output",
+            size=2048,
+            created_at=dt.datetime(2025, 6, 1, 12, 0, 0, tzinfo=dt.UTC),
+            digest="sha256:aabbcc",
+        ),
+        ArtifactInfo(
+            id=11,
+            name="test-logs",
+            size=512,
+            created_at=dt.datetime(2025, 6, 2, 8, 30, 0, tzinfo=dt.UTC),
+            digest="sha256:ddeeff",
+        ),
+    )
+)
+
+
+def test_cli_list_prints_human_readable_result(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fake_list_artifacts(self: ArtifactClientApi) -> ArtifactListResult:
+        return _LIST_RESULT
+
+    monkeypatch.setattr(ArtifactClientApi, "list_artifacts", fake_list_artifacts)
+    monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "token")
+    monkeypatch.setenv("ACTIONS_RESULTS_URL", "https://results.example.test")
+
+    exit_code = main(["list"])
+
+    assert exit_code == 0
+    output = capsys.readouterr()
+    assert "2 artifact(s)" in output.out
+    assert "build-output" in output.out
+    assert "10" in output.out
+    assert "2048" in output.out
+    assert "sha256:aabbcc" in output.out
+    assert "2025-06-01" in output.out
+    assert "test-logs" in output.out
+    assert "11" in output.out
+    assert "sha256:ddeeff" in output.out
+    assert "2025-06-02" in output.out
+    assert output.err == ""
+
+
+def test_cli_list_prints_json_result(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_list_artifacts(self: ArtifactClientApi) -> ArtifactListResult:
+        captured["runtime_token"] = self._runtime_token
+        captured["results_url"] = self._results_url
+        captured["node_executable"] = self._node_executable
+        return _LIST_RESULT
+
+    monkeypatch.setattr(ArtifactClientApi, "list_artifacts", fake_list_artifacts)
+
+    exit_code = main(
+        [
+            "--runtime-token",
+            "my-token",
+            "--results-url",
+            "https://results.example.test",
+            "--node",
+            "node24",
+            "list",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured == {
+        "runtime_token": "my-token",
+        "results_url": "https://results.example.test",
+        "node_executable": "node24",
+    }
+    output = capsys.readouterr()
+    data = json.loads(output.out)
+    assert "artifacts" in data
+    assert len(data["artifacts"]) == 2
+    assert data["artifacts"][0] == {
+        "id": 10,
+        "name": "build-output",
+        "size": 2048,
+        "created_at": "2025-06-01T12:00:00+00:00",
+        "digest": "sha256:aabbcc",
+    }
+    assert data["artifacts"][1] == {
+        "id": 11,
+        "name": "test-logs",
+        "size": 512,
+        "created_at": "2025-06-02T08:30:00+00:00",
+        "digest": "sha256:ddeeff",
+    }
+    assert output.err == ""
+
+
+def test_cli_list_reads_credentials_from_env(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "env-token")
+    monkeypatch.setenv("ACTIONS_RESULTS_URL", "https://env.example.test")
+
+    captured: dict[str, object] = {}
+
+    def fake_list_artifacts(self: ArtifactClientApi) -> ArtifactListResult:
+        captured["runtime_token"] = self._runtime_token
+        captured["results_url"] = self._results_url
+        return ArtifactListResult(artifacts=())
+
+    monkeypatch.setattr(ArtifactClientApi, "list_artifacts", fake_list_artifacts)
+
+    exit_code = main(["list"])
+
+    assert exit_code == 0
+    assert captured["runtime_token"] == "env-token"
+    assert captured["results_url"] == "https://env.example.test"
+
+
+def test_cli_list_writes_artifact_errors_to_stderr(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fake_list_artifacts(self: ArtifactClientApi) -> ArtifactListResult:
+        raise ArtifactClientError("list failed")
+
+    monkeypatch.setattr(ArtifactClientApi, "list_artifacts", fake_list_artifacts)
+    monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "token")
+    monkeypatch.setenv("ACTIONS_RESULTS_URL", "https://results.example.test")
+
+    exit_code = main(["list"])
+
+    assert exit_code == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == "list failed\n"
+
+
+def test_cli_list_missing_credentials_exits_with_error(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("ACTIONS_RUNTIME_TOKEN", raising=False)
+    monkeypatch.delenv("ACTIONS_RESULTS_URL", raising=False)
+
+    exit_code = main(["list"])
 
     assert exit_code == 1
     output = capsys.readouterr()

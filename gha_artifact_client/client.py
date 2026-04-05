@@ -10,7 +10,7 @@ import tempfile
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from typing import BinaryIO
+from typing import Any, BinaryIO
 
 from .exceptions import (
     NodeNotFoundError,
@@ -75,6 +75,35 @@ class ArtifactSignedURLResult:
     ``"https://storage.example.com/artifact?sig=..."``."""
 
 
+@dataclass(frozen=True, slots=True)
+class ArtifactInfo:
+    """A single artifact entry returned by :meth:`ArtifactClientApi.list_artifacts`."""
+
+    id: int
+    """The numeric artifact ID assigned by GitHub Actions, e.g. ``42``."""
+
+    name: str
+    """The artifact name, e.g. ``"package.tar.gz"``."""
+
+    size: int
+    """The size of the artifact in bytes, e.g. ``1048576``."""
+
+    created_at: dt.datetime
+    """The UTC datetime when the artifact was created."""
+
+    digest: str
+    """The SHA-256 content digest in the form ``"sha256:<hex>"``, e.g.
+    ``"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"``."""
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactListResult:
+    """Result of a successful artifact list."""
+
+    artifacts: tuple[ArtifactInfo, ...]
+    """All artifacts for the current workflow job run."""
+
+
 class ArtifactClientApi:
     """Client for GitHub Actions artifacts.
 
@@ -127,9 +156,7 @@ class ArtifactClientApi:
         self._results_url: str = resolved_url
         self._node_executable = node_executable
 
-    def _run_node_wrapper(
-        self, payload: dict[str, object]
-    ) -> dict[str, str | int | float | bool]:
+    def _run_node_wrapper(self, payload: dict[str, object]) -> dict[str, Any]:
         node_command = os.fsdecode(self._node_executable)
         node_wrapper = resources.files("gha_artifact_client").joinpath(
             "_vendor/artifact_node_wrapper.mjs"
@@ -176,7 +203,7 @@ class ArtifactClientApi:
             )
 
         try:
-            response: dict[str, str | int | float | bool] = json.loads(process.stdout)
+            response: dict[str, Any] = json.loads(process.stdout)
         except json.JSONDecodeError as exc:
             raise NodeWrapperExecutionError(
                 "Artifact node wrapper returned invalid JSON",
@@ -390,3 +417,52 @@ class ArtifactClientApi:
 
         assert raw_url is not None
         return ArtifactSignedURLResult(url=str(raw_url))
+
+    def list_artifacts(self) -> ArtifactListResult:
+        """List all artifacts for the current workflow job run.
+
+        Returns an :class:`ArtifactListResult` whose ``artifacts`` tuple
+        contains one :class:`ArtifactInfo` entry per artifact.  The order
+        matches whatever the backend returns (typically creation order).
+        """
+
+        payload: dict[str, object] = {"action": "list"}
+
+        response = self._run_node_wrapper(payload)
+
+        raw_artifacts = response.get("artifacts")
+        if not isinstance(raw_artifacts, list):
+            raise NodeWrapperExecutionError(
+                "Artifact list node wrapper response missing field: artifacts",
+                returncode=0,
+                stderr="",
+                stdout="",
+            )
+
+        infos: list[ArtifactInfo] = []
+        for item in raw_artifacts:
+            if not isinstance(item, dict):
+                raise NodeWrapperExecutionError(
+                    "Artifact list node wrapper returned unexpected item type",
+                    returncode=0,
+                    stderr="",
+                    stdout="",
+                )
+
+            # Node wrapper guarantees both createdAt and digest are present.
+            # createdAt is a Unix timestamp in milliseconds (integer string).
+            created_at = dt.datetime.fromtimestamp(
+                int(item["createdAt"]) / 1000, tz=dt.UTC
+            )
+
+            infos.append(
+                ArtifactInfo(
+                    id=int(item["id"]),
+                    name=str(item["name"]),
+                    size=int(item["size"]),
+                    created_at=created_at,
+                    digest=str(item["digest"]),
+                )
+            )
+
+        return ArtifactListResult(artifacts=tuple(infos))

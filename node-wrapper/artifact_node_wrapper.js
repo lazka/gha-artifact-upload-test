@@ -36,7 +36,23 @@ const ERROR_PREFIX = 'GHA_ARTIFACT_CLIENT_ERROR:'
  */
 
 /**
- * @typedef {UploadPayload | DeletePayload | GetSignedUrlPayload} Payload
+ * @typedef {{
+ *   action: 'list',
+ * }} ListPayload
+ */
+
+/**
+ * @typedef {{
+ *   id: string,
+ *   name: string,
+ *   size: string,
+ *   createdAt: string,
+ *   digest: string,
+ * }} ListArtifactInfo
+ */
+
+/**
+ * @typedef {UploadPayload | DeletePayload | GetSignedUrlPayload | ListPayload} Payload
  */
 
 /**
@@ -208,6 +224,53 @@ async function getSignedUrl(payload) {
   return { url: getSignedUrlResp.signedUrl }
 }
 
+/**
+ * @param {ListPayload} payload
+ * @returns {Promise<{artifacts: Array<ListArtifactInfo>}>}
+ */
+async function listArtifacts(payload) {
+  void payload
+
+  const backendIds = getBackendIdsFromToken()
+  const artifactClient = internalArtifactTwirpClient()
+
+  /** @type {import('@actions/artifact/lib/generated/results/api/v1/artifact.js').ListArtifactsRequest} */
+  const listArtifactsReq = {
+    workflowRunBackendId: backendIds.workflowRunBackendId,
+    workflowJobRunBackendId: backendIds.workflowJobRunBackendId,
+  }
+
+  const listArtifactsResp = await artifactClient.ListArtifacts(listArtifactsReq)
+
+  const artifacts = listArtifactsResp.artifacts.map(artifact => {
+    const createdAtDate = artifact.createdAt
+      ? Timestamp.toDate(artifact.createdAt)
+      : null
+    const digest = artifact.digest?.value ?? null
+
+    if (!createdAtDate) {
+      throw new InvalidResponseError(
+        `ListArtifacts: artifact '${artifact.name}' is missing createdAt`
+      )
+    }
+    if (!digest) {
+      throw new InvalidResponseError(
+        `ListArtifacts: artifact '${artifact.name}' is missing digest`
+      )
+    }
+
+    return {
+      id: String(artifact.databaseId),
+      name: artifact.name,
+      size: String(artifact.size),
+      createdAt: String(createdAtDate.getTime()),
+      digest,
+    }
+  })
+
+  return { artifacts }
+}
+
 async function main() {
   try {
     const payload = /** @type {Payload} */ (JSON.parse(await readStdin()))
@@ -217,6 +280,9 @@ async function main() {
       process.stdout.write(`${JSON.stringify(response)}\n`)
     } else if (payload.action === 'get-signed-url') {
       const response = await withStdoutRedirect(() => getSignedUrl(payload))
+      process.stdout.write(`${JSON.stringify(response)}\n`)
+    } else if (payload.action === 'list') {
+      const response = await withStdoutRedirect(() => listArtifacts(payload))
       process.stdout.write(`${JSON.stringify(response)}\n`)
     } else if (payload.action === 'upload') {
       const response = await withStdoutRedirect(() => uploadArtifact(payload))
