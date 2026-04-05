@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import time
 from pathlib import Path
 
 import pytest
@@ -38,31 +37,18 @@ def test_live_upload_visible_via_pygithub(tmp_path: Path) -> None:
     client = Github(auth=Auth.Token(token))
     requester = client.get_repo(repository_name).requester
 
-    artifact_data = None
-    run_artifacts = None
-
-    for _ in range(12):
-        _, artifact_response = requester.requestJsonAndCheck(
-            "GET",
-            f"/repos/{repository_name}/actions/artifacts/{result.id}",
-        )
-        _, run_response = requester.requestJsonAndCheck(
-            "GET",
-            f"/repos/{repository_name}/actions/runs/{run_id}/artifacts",
-        )
-
-        if str(artifact_response.get("id")) == result.id:
-            artifact_data = artifact_response
-
-        run_artifacts = run_response.get("artifacts", [])
-        if any(str(artifact.get("id")) == result.id for artifact in run_artifacts):
-            break
-
-        # The upload can finish before the artifact is visible through the REST API.
-        time.sleep(1)
+    _, artifact_data = requester.requestJsonAndCheck(
+        "GET",
+        f"/repos/{repository_name}/actions/artifacts/{result.id}",
+    )
+    _, run_response = requester.requestJsonAndCheck(
+        "GET",
+        f"/repos/{repository_name}/actions/runs/{run_id}/artifacts",
+    )
+    run_artifacts = run_response.get("artifacts", [])
 
     assert artifact_data is not None
     assert artifact_data["name"] == artifact_name
-    assert any(str(artifact.get("id")) == result.id for artifact in run_artifacts or [])
+    assert any(str(artifact.get("id")) == result.id for artifact in run_artifacts)
 
     assert artifact_data.get("digest") == f"sha256:{expected_digest}"
