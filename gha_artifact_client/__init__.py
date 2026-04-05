@@ -1,5 +1,6 @@
 from gha_artifact_client.client import (
     ArtifactClientApi,
+    ArtifactDeleteResult,
     ArtifactUploadResult,
 )
 from gha_artifact_client.exceptions import (
@@ -12,6 +13,7 @@ from gha_artifact_client.exceptions import (
 __all__ = [
     "ArtifactClientError",
     "ArtifactClientApi",
+    "ArtifactDeleteResult",
     "ArtifactUploadResult",
     "NodeNotFoundError",
     "NodeWrapperExecutionError",

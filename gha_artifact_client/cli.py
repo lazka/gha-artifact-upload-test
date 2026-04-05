@@ -7,7 +7,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 
-from .client import ArtifactClientApi
+from .client import ArtifactClientApi, ArtifactDeleteResult
 from .exceptions import ArtifactClientError
 
 
@@ -114,6 +114,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output result as JSON instead of human-readable text",
     )
 
+    delete_parser = subparsers.add_parser(
+        "delete",
+        help="Delete a GitHub Actions artifact by name.",
+        description=(
+            "Delete a GitHub Actions artifact by name from the current workflow"
+            " job run."
+        ),
+    )
+    delete_parser.add_argument("name", help="Name of the artifact to delete")
+    delete_parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output result as JSON instead of human-readable text",
+    )
+
     return parser
 
 
@@ -149,6 +165,23 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(f"  Size:   {result.size} bytes")
             if result.digest is not None:
                 print(f"  Digest: {result.digest}")
+
+    elif args.subcommand == "delete":
+        try:
+            api = ArtifactClientApi(
+                runtime_token=args.runtime_token,
+                results_url=args.results_url,
+                node_executable=args.node_executable,
+            )
+            result_d: ArtifactDeleteResult = api.delete_artifact(args.name)
+        except ArtifactClientError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+
+        if args.json:
+            print(json.dumps({"id": result_d.id}))
+        else:
+            print(f"Deleted artifact '{args.name}' (id: {result_d.id}).")
 
     return 0
 

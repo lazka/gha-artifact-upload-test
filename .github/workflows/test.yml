@@ -75,13 +75,13 @@ jobs:
             core.setOutput('ACTIONS_RUNTIME_TOKEN', process.env['ACTIONS_RUNTIME_TOKEN'])
             core.setOutput('ACTIONS_RESULTS_URL', process.env['ACTIONS_RESULTS_URL'])
 
-      - name: Live integration test
+      - name: Live integration tests
         env:
           ACTIONS_RUNTIME_TOKEN: ${{ steps.vars.outputs.ACTIONS_RUNTIME_TOKEN }}
           ACTIONS_RESULTS_URL: ${{ steps.vars.outputs.ACTIONS_RESULTS_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          uv run pytest -m integration tests/test_live_upload.py
+          uv run pytest -m integration
 
       - name: Live CLI test
         env:
@@ -99,6 +99,15 @@ jobs:
           echo "zip contents" > zip_inner.txt
           python -m zipfile -c cli_test.zip zip_inner.txt
           uv run gha-artifact-client upload --name cli-test-zip cli_test.zip
+
+      - name: Live CLI delete test
+        env:
+          ACTIONS_RUNTIME_TOKEN: ${{ steps.vars.outputs.ACTIONS_RUNTIME_TOKEN }}
+          ACTIONS_RESULTS_URL: ${{ steps.vars.outputs.ACTIONS_RESULTS_URL }}
+        run: |
+          echo "to be deleted" > delete_me.txt
+          uv run gha-artifact-client upload --name cli-delete-test delete_me.txt
+          uv run gha-artifact-client delete cli-delete-test
 
       - name: Download test.txt artifact via actions/download-artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1

@@ -12,12 +12,24 @@ const ERROR_PREFIX = 'GHA_ARTIFACT_CLIENT_ERROR:'
 
 /**
  * @typedef {{
+ *   action: 'upload',
  *   name: string,
  *   filePath: string,
  *   mimeType?: string,
  *   retentionDays?: number,
  *   expiresAt?: number,
  * }} UploadPayload
+ */
+
+/**
+ * @typedef {{
+ *   action: 'delete',
+ *   name: string,
+ * }} DeletePayload
+ */
+
+/**
+ * @typedef {UploadPayload | DeletePayload} Payload
  */
 
 /**
@@ -139,13 +151,44 @@ async function uploadArtifact(payload) {
   }
 }
 
+/**
+ * @param {DeletePayload} payload
+ * @returns {Promise<{id: number}>}
+ */
+async function deleteArtifact(payload) {
+  const { name } = payload
+
+  const backendIds = getBackendIdsFromToken()
+  const artifactClient = internalArtifactTwirpClient()
+
+  /** @type {import('@actions/artifact/lib/generated/results/api/v1/artifact.js').DeleteArtifactRequest} */
+  const deleteArtifactReq = {
+    workflowRunBackendId: backendIds.workflowRunBackendId,
+    workflowJobRunBackendId: backendIds.workflowJobRunBackendId,
+    name,
+  }
+
+  const deleteArtifactResp = await artifactClient.DeleteArtifact(deleteArtifactReq)
+  if (!deleteArtifactResp.ok) {
+    throw new InvalidResponseError('DeleteArtifact: response from backend was not ok')
+  }
+
+  return { id: Number(deleteArtifactResp.artifactId) }
+}
+
 async function main() {
   try {
-    const payload = /** @type {UploadPayload} */ (JSON.parse(await readStdin()))
+    const payload = /** @type {Payload} */ (JSON.parse(await readStdin()))
 
-    const response = await withStdoutRedirect(() => uploadArtifact(payload))
-
-    process.stdout.write(`${JSON.stringify(response)}\n`)
+    if (payload.action === 'delete') {
+      const response = await withStdoutRedirect(() => deleteArtifact(payload))
+      process.stdout.write(`${JSON.stringify(response)}\n`)
+    } else if (payload.action === 'upload') {
+      const response = await withStdoutRedirect(() => uploadArtifact(payload))
+      process.stdout.write(`${JSON.stringify(response)}\n`)
+    } else {
+      throw new Error(`Unknown action: ${/** @type {{action: unknown}} */ (payload).action}`)
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     const details = /** @type {ErrorDetails} */ ({

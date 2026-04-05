@@ -57,6 +57,14 @@ class ArtifactUploadResult:
     ``"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"``."""
 
 
+@dataclass(frozen=True, slots=True)
+class ArtifactDeleteResult:
+    """Result of a successful artifact deletion."""
+
+    id: int
+    """The numeric artifact ID of the deleted artifact, e.g. ``42``."""
+
+
 class ArtifactClientApi:
     """Client for GitHub Actions artifacts.
 
@@ -109,7 +117,9 @@ class ArtifactClientApi:
         self._results_url: str = resolved_url
         self._node_executable = node_executable
 
-    def _run_node_wrapper(self, payload: dict[str, object]) -> ArtifactUploadResult:
+    def _run_node_wrapper(
+        self, payload: dict[str, object]
+    ) -> dict[str, str | int | float | bool]:
         node_command = os.fsdecode(self._node_executable)
         node_wrapper = resources.files("gha_artifact_client").joinpath(
             "_vendor/artifact_node_wrapper.mjs"
@@ -135,7 +145,7 @@ class ArtifactClientApi:
                 ) from exc
 
         if process.returncode != 0:
-            message = "Artifact upload node wrapper failed"
+            message = "Artifact node wrapper failed"
             for line in reversed(process.stderr.splitlines()):
                 if line.startswith(_NODE_WRAPPER_ERROR_PREFIX):
                     try:
@@ -156,42 +166,16 @@ class ArtifactClientApi:
             )
 
         try:
-            response = json.loads(process.stdout)
+            response: dict[str, str | int | float | bool] = json.loads(process.stdout)
         except json.JSONDecodeError as exc:
             raise NodeWrapperExecutionError(
-                "Artifact upload node wrapper returned invalid JSON",
+                "Artifact node wrapper returned invalid JSON",
                 returncode=process.returncode,
                 stderr=process.stderr,
                 stdout=process.stdout,
             ) from exc
 
-        raw_id = response.get("id")
-        raw_size = response.get("size")
-        raw_digest = response.get("digest")
-
-        missing = [
-            name
-            for name, value in (
-                ("id", raw_id),
-                ("size", raw_size),
-                ("digest", raw_digest),
-            )
-            if value is None
-        ]
-        if missing:
-            raise NodeWrapperExecutionError(
-                "Artifact upload node wrapper response missing fields: "
-                + ", ".join(missing),
-                returncode=process.returncode,
-                stderr=process.stderr,
-                stdout=process.stdout,
-            )
-
-        return ArtifactUploadResult(
-            id=int(raw_id),
-            size=int(raw_size),
-            digest=str(raw_digest),
-        )
+        return response
 
     def upload_artifact(
         self,
@@ -248,6 +232,7 @@ class ArtifactClientApi:
             )
 
         payload: dict[str, object] = {
+            "action": "upload",
             "name": artifact_name,
             "filePath": str(resolved_path),
         }
@@ -258,7 +243,36 @@ class ArtifactClientApi:
         elif expires_in is not None:
             payload["expiresAt"] = _expires_in_to_unix(expires_in)
 
-        return self._run_node_wrapper(payload)
+        response = self._run_node_wrapper(payload)
+
+        raw_id = response.get("id")
+        raw_size = response.get("size")
+        raw_digest = response.get("digest")
+
+        missing = [
+            field_name
+            for field_name, value in (
+                ("id", raw_id),
+                ("size", raw_size),
+                ("digest", raw_digest),
+            )
+            if value is None
+        ]
+        if missing:
+            raise NodeWrapperExecutionError(
+                "Artifact upload node wrapper response missing fields: "
+                + ", ".join(missing),
+                returncode=0,
+                stderr="",
+                stdout="",
+            )
+
+        assert raw_id is not None and raw_size is not None and raw_digest is not None
+        return ArtifactUploadResult(
+            id=int(raw_id),
+            size=int(raw_size),
+            digest=str(raw_digest),
+        )
 
     def upload_artifact_fileobj(
         self,
@@ -307,3 +321,33 @@ class ArtifactClientApi:
             expires_at=expires_at,
             expires_in=expires_in,
         )
+
+    def delete_artifact(self, name: str) -> ArtifactDeleteResult:
+        """Delete a GitHub Actions artifact by name.
+
+        Deletes the artifact with the given name from the current workflow job
+        run. If multiple artifacts share the same name, the backend deletes the
+        most recently created one.
+
+        Returns an :class:`ArtifactDeleteResult` containing the numeric ID of
+        the deleted artifact.
+        """
+
+        payload: dict[str, object] = {
+            "action": "delete",
+            "name": name,
+        }
+
+        response = self._run_node_wrapper(payload)
+
+        raw_id = response.get("id")
+        if raw_id is None:
+            raise NodeWrapperExecutionError(
+                "Artifact delete node wrapper response missing field: id",
+                returncode=0,
+                stderr="",
+                stdout="",
+            )
+
+        assert raw_id is not None
+        return ArtifactDeleteResult(id=int(raw_id))

@@ -6,7 +6,11 @@ import json
 import pytest
 
 from gha_artifact_client.cli import main
-from gha_artifact_client.client import ArtifactClientApi, ArtifactUploadResult
+from gha_artifact_client.client import (
+    ArtifactClientApi,
+    ArtifactDeleteResult,
+    ArtifactUploadResult,
+)
 from gha_artifact_client.exceptions import (
     ArtifactClientError,
 )
@@ -275,6 +279,136 @@ def test_cli_missing_credentials_exits_with_error(
     monkeypatch.delenv("ACTIONS_RESULTS_URL", raising=False)
 
     exit_code = main(["upload", "some-file.txt"])
+
+    assert exit_code == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "live GitHub Actions" in output.err
+
+
+# ---------------------------------------------------------------------------
+# delete subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_cli_delete_prints_human_readable_result(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fake_delete_artifact(
+        self: ArtifactClientApi,
+        name: str,
+    ) -> ArtifactDeleteResult:
+        return ArtifactDeleteResult(id=42)
+
+    monkeypatch.setattr(ArtifactClientApi, "delete_artifact", fake_delete_artifact)
+    monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "token")
+    monkeypatch.setenv("ACTIONS_RESULTS_URL", "https://results.example.test")
+
+    exit_code = main(["delete", "my-artifact"])
+
+    assert exit_code == 0
+    output = capsys.readouterr()
+    assert "my-artifact" in output.out
+    assert "42" in output.out
+    assert output.err == ""
+
+
+def test_cli_delete_prints_json_result(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_delete_artifact(
+        self: ArtifactClientApi,
+        name: str,
+    ) -> ArtifactDeleteResult:
+        captured["name"] = name
+        captured["runtime_token"] = self._runtime_token
+        captured["results_url"] = self._results_url
+        captured["node_executable"] = self._node_executable
+        return ArtifactDeleteResult(id=42)
+
+    monkeypatch.setattr(ArtifactClientApi, "delete_artifact", fake_delete_artifact)
+
+    exit_code = main(
+        [
+            "--runtime-token",
+            "my-token",
+            "--results-url",
+            "https://results.example.test",
+            "--node",
+            "node24",
+            "delete",
+            "my-artifact",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured == {
+        "name": "my-artifact",
+        "runtime_token": "my-token",
+        "results_url": "https://results.example.test",
+        "node_executable": "node24",
+    }
+    output = capsys.readouterr()
+    assert json.loads(output.out) == {"id": 42}
+    assert output.err == ""
+
+
+def test_cli_delete_reads_credentials_from_env(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "env-token")
+    monkeypatch.setenv("ACTIONS_RESULTS_URL", "https://env.example.test")
+
+    captured: dict[str, object] = {}
+
+    def fake_delete_artifact(
+        self: ArtifactClientApi,
+        name: str,
+    ) -> ArtifactDeleteResult:
+        captured["runtime_token"] = self._runtime_token
+        captured["results_url"] = self._results_url
+        return ArtifactDeleteResult(id=1)
+
+    monkeypatch.setattr(ArtifactClientApi, "delete_artifact", fake_delete_artifact)
+
+    exit_code = main(["delete", "some-artifact"])
+
+    assert exit_code == 0
+    assert captured["runtime_token"] == "env-token"
+    assert captured["results_url"] == "https://env.example.test"
+
+
+def test_cli_delete_writes_artifact_errors_to_stderr(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fake_delete_artifact(
+        self: ArtifactClientApi,
+        name: str,
+    ) -> ArtifactDeleteResult:
+        raise ArtifactClientError("delete failed")
+
+    monkeypatch.setattr(ArtifactClientApi, "delete_artifact", fake_delete_artifact)
+    monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "token")
+    monkeypatch.setenv("ACTIONS_RESULTS_URL", "https://results.example.test")
+
+    exit_code = main(["delete", "my-artifact"])
+
+    assert exit_code == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == "delete failed\n"
+
+
+def test_cli_delete_missing_credentials_exits_with_error(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("ACTIONS_RUNTIME_TOKEN", raising=False)
+    monkeypatch.delenv("ACTIONS_RESULTS_URL", raising=False)
+
+    exit_code = main(["delete", "some-artifact"])
 
     assert exit_code == 1
     output = capsys.readouterr()

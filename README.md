@@ -1,17 +1,19 @@
 # gha-artifact-client
 
-Python wrapper/CLI around `@actions/artifact` for creating workflow artifacts
-from inside a GitHub Actions job.
+Python wrapper/CLI around `@actions/artifact` for creating and deleting workflow
+artifacts from inside a GitHub Actions job.
 
-Allows you to upload workflow artifacts dynamically from Python code without
-needing to invoke the `actions/upload-artifact` action in your workflow yaml.
+Allows you to upload and delete workflow artifacts dynamically from Python code
+without needing to invoke the `actions/upload-artifact` action or the GitHub
+REST API in your workflow yaml.
 
 ## Notes
 
-- Uploading artifacts only works during the lifetime of a GitHub Actions job.
+- Uploading and deleting artifacts only works during the lifetime of a GitHub
+  Actions job.
 - Unlike other GitHub API interactions requires a `ACTIONS_RUNTIME_TOKEN` and
   and not a `GITHUB_TOKEN`.
-- Since the upload API is not publicly documented, this package vendors a
+- Since the artifact API is not publicly documented, this package vendors a
   custom-built node wrapper around the official
   [@actions/artifact](https://www.npmjs.com/package/@actions/artifact) package,
   which is invoked with node. node needs to be provided by the user.
@@ -71,17 +73,36 @@ with open("dist/package.tar.gz", "rb") as f:
     result = api.upload_artifact_fileobj(f, name="package.tar.gz")
 
 print(result.id)
+
+# Delete an artifact by name
+result = api.delete_artifact("package.tar.gz")
+
+print(result.id)
 ```
 
 ### CLI
 
 ```bash
+# Upload
 gha-artifact-client upload dist/package.tar.gz --name package.tar.gz --expires-in 604800
+
+# Delete
+gha-artifact-client delete package.tar.gz
 ```
 
 `--expires-in` takes seconds (int or float). Use `--expires-at` for an exact
 point in time as a timezone-aware ISO 8601 datetime. The two flags are mutually
 exclusive.
+
+Both subcommands accept `--json` to emit machine-readable output:
+
+```bash
+gha-artifact-client upload dist/package.tar.gz --json
+# {"id": 42, "size": 1234, "digest": "sha256:..."}
+
+gha-artifact-client delete package.tar.gz --json
+# {"id": 42}
+```
 
 Credentials default to `ACTIONS_RUNTIME_TOKEN` and `ACTIONS_RESULTS_URL` from
 the environment, but can be supplied explicitly:
@@ -93,8 +114,8 @@ gha-artifact-client --runtime-token "$MY_TOKEN" --results-url "$MY_RESULTS_URL" 
 
 ## Credentials & Security Considerations
 
-Uploading artifacts requires a URL and a credential that is only available
-inside a live GitHub Actions job:
+Uploading and deleting artifacts requires a URL and a credential that is only
+available inside a live GitHub Actions job:
 
 - `ACTIONS_RUNTIME_TOKEN` — a token created for the current job.
 - `ACTIONS_RESULTS_URL` — the endpoint for the artifact storage backend.
@@ -111,7 +132,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Get artifact upload credentials
+      - name: Get artifact credentials
         id: vars
         uses: actions/github-script@v8
         with:
