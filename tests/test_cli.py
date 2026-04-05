@@ -31,7 +31,7 @@ def test_cli_prints_human_readable_result(
         expires_at: object,
         expires_in: object,
     ) -> ArtifactUploadResult:
-        return ArtifactUploadResult(id="7", size=11, digest="abc")
+        return ArtifactUploadResult(id=7, size=11, digest="abc")
 
     monkeypatch.setattr(ArtifactClientApi, "upload_artifact", fake_upload_artifact)
 
@@ -78,7 +78,7 @@ def test_cli_prints_json_result(
             "results_url": self._results_url,
             "node_executable": self._node_executable,
         }
-        return ArtifactUploadResult(id="7", size=11, digest="abc")
+        return ArtifactUploadResult(id=7, size=11, digest="abc")
 
     monkeypatch.setattr(ArtifactClientApi, "upload_artifact", fake_upload_artifact)
 
@@ -112,7 +112,7 @@ def test_cli_prints_json_result(
         "node_executable": "node24",
     }
     output = capsys.readouterr()
-    assert json.loads(output.out) == {"id": "7", "size": 11, "digest": "abc"}
+    assert json.loads(output.out) == {"id": 7, "size": 11, "digest": "abc"}
     assert output.err == ""
 
 
@@ -131,7 +131,7 @@ def test_cli_expires_at_is_parsed_as_datetime(
         expires_in: object,
     ) -> ArtifactUploadResult:
         captured["expires_at"] = expires_at
-        return ArtifactUploadResult(id="1", size=2, digest="x")
+        return ArtifactUploadResult(id=1, size=2, digest="x")
 
     monkeypatch.setattr(ArtifactClientApi, "upload_artifact", fake_upload_artifact)
     monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "token")
@@ -174,7 +174,7 @@ def test_cli_expires_in_is_parsed_as_float(
         expires_in: object,
     ) -> ArtifactUploadResult:
         captured["expires_in"] = expires_in
-        return ArtifactUploadResult(id="1", size=2, digest="x")
+        return ArtifactUploadResult(id=1, size=2, digest="x")
 
     monkeypatch.setattr(ArtifactClientApi, "upload_artifact", fake_upload_artifact)
     monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "token")
@@ -238,7 +238,7 @@ def test_cli_reads_credentials_from_env(
     ) -> ArtifactUploadResult:
         captured["runtime_token"] = self._runtime_token
         captured["results_url"] = self._results_url
-        return ArtifactUploadResult(id="1", size=2, digest="xyz")
+        return ArtifactUploadResult(id=1, size=2, digest="xyz")
 
     monkeypatch.setattr(ArtifactClientApi, "upload_artifact", fake_upload_artifact)
 
@@ -301,7 +301,7 @@ def test_cli_delete_prints_human_readable_result(
         self: ArtifactClientApi,
         name: str,
     ) -> ArtifactDeleteResult:
-        return ArtifactDeleteResult(id="42")
+        return ArtifactDeleteResult(id=42)
 
     monkeypatch.setattr(ArtifactClientApi, "delete_artifact", fake_delete_artifact)
     monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "token")
@@ -329,7 +329,7 @@ def test_cli_delete_prints_json_result(
         captured["runtime_token"] = self._runtime_token
         captured["results_url"] = self._results_url
         captured["node_executable"] = self._node_executable
-        return ArtifactDeleteResult(id="42")
+        return ArtifactDeleteResult(id=42)
 
     monkeypatch.setattr(ArtifactClientApi, "delete_artifact", fake_delete_artifact)
 
@@ -355,7 +355,7 @@ def test_cli_delete_prints_json_result(
         "node_executable": "node24",
     }
     output = capsys.readouterr()
-    assert json.loads(output.out) == {"id": "42"}
+    assert json.loads(output.out) == {"id": 42}
     assert output.err == ""
 
 
@@ -373,7 +373,7 @@ def test_cli_delete_reads_credentials_from_env(
     ) -> ArtifactDeleteResult:
         captured["runtime_token"] = self._runtime_token
         captured["results_url"] = self._results_url
-        return ArtifactDeleteResult(id="1")
+        return ArtifactDeleteResult(id=1)
 
     monkeypatch.setattr(ArtifactClientApi, "delete_artifact", fake_delete_artifact)
 
@@ -565,14 +565,14 @@ def test_cli_get_signed_url_missing_credentials_exits_with_error(
 _LIST_RESULT = ArtifactListResult(
     artifacts=(
         ArtifactInfo(
-            id="10",
+            id=10,
             name="build-output",
             size=2048,
             created_at=dt.datetime(2025, 6, 1, 12, 0, 0, tzinfo=dt.UTC),
             digest="sha256:aabbcc",
         ),
         ArtifactInfo(
-            id="11",
+            id=11,
             name="test-logs",
             size=512,
             created_at=dt.datetime(2025, 6, 2, 8, 30, 0, tzinfo=dt.UTC),
@@ -646,14 +646,14 @@ def test_cli_list_prints_json_result(
     assert "artifacts" in data
     assert len(data["artifacts"]) == 2
     assert data["artifacts"][0] == {
-        "id": "10",
+        "id": 10,
         "name": "build-output",
         "size": 2048,
         "created_at": "2025-06-01T12:00:00+00:00",
         "digest": "sha256:aabbcc",
     }
     assert data["artifacts"][1] == {
-        "id": "11",
+        "id": 11,
         "name": "test-logs",
         "size": 512,
         "created_at": "2025-06-02T08:30:00+00:00",

@@ -17,7 +17,7 @@ from gha_artifact_client.exceptions import (
 from .conftest import make_api as _make_api
 
 _ARTIFACT_1 = {
-    "id": "42",
+    "id": 42,
     "name": "my-artifact",
     "size": "1234",
     "createdAt": 1748779200000,  # 2025-06-01T12:00:00Z
@@ -25,7 +25,7 @@ _ARTIFACT_1 = {
 }
 
 _ARTIFACT_2 = {
-    "id": "99",
+    "id": 99,
     "name": "other-artifact",
     "size": "5678",
     "createdAt": 1748854200000,  # 2025-06-02T08:30:00Z
@@ -115,7 +115,7 @@ def test_list_returns_artifact_list_result(
 
     a1 = result.artifacts[0]
     assert isinstance(a1, ArtifactInfo)
-    assert a1.id == "42"
+    assert a1.id == 42
     assert a1.name == "my-artifact"
     assert a1.size == 1234
     assert a1.digest == "sha256:abc123"
@@ -126,7 +126,7 @@ def test_list_returns_artifact_list_result(
     assert a1.created_at.tzinfo is not None
 
     a2 = result.artifacts[1]
-    assert a2.id == "99"
+    assert a2.id == 99
     assert a2.name == "other-artifact"
     assert a2.size == 5678
     assert a2.digest == "sha256:def456"

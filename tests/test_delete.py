@@ -24,7 +24,7 @@ def _delete_success_run(
     text: bool,
     capture_output: bool,
     check: bool,
-    artifact_id: str = "42",
+    artifact_id: int = 42,
 ) -> subprocess.CompletedProcess[str]:
     del text, capture_output, check
     return subprocess.CompletedProcess(
@@ -69,7 +69,7 @@ def test_delete_sends_correct_action_and_name(
     api = _make_api()
     result = api.delete_artifact("my-artifact")
 
-    assert result == ArtifactDeleteResult(id="42")
+    assert result == ArtifactDeleteResult(id=42)
     assert captured["payload"] == {"action": "delete", "name": "my-artifact"}
 
 
@@ -88,7 +88,7 @@ def test_delete_returns_artifact_delete_result(
         return subprocess.CompletedProcess(
             args=args,
             returncode=0,
-            stdout=json.dumps({"id": "99"}),
+            stdout=json.dumps({"id": 99}),
             stderr="",
         )
 
@@ -98,7 +98,7 @@ def test_delete_returns_artifact_delete_result(
     result = api.delete_artifact("my-artifact")
 
     assert isinstance(result, ArtifactDeleteResult)
-    assert result.id == "99"
+    assert result.id == 99
 
 
 # ---------------------------------------------------------------------------

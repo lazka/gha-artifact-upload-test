@@ -40,4 +40,4 @@ def make_fake_run(stdout: str) -> Any:
 
 @pytest.fixture
 def fake_delete_run(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(subprocess, "run", make_fake_run(json.dumps({"id": "1"})))
+    monkeypatch.setattr(subprocess, "run", make_fake_run(json.dumps({"id": 1})))

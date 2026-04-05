@@ -116,16 +116,16 @@ All subcommands accept `--json` to emit machine-readable output:
 
 ```bash
 gha-artifact-client upload dist/package.tar.gz --json
-# {"id": "42", "size": 1234, "digest": "sha256:..."}
+# {"id": 42, "size": 1234, "digest": "sha256:..."}
 
 gha-artifact-client delete package.tar.gz --json
-# {"id": "42"}
+# {"id": 42}
 
 gha-artifact-client get-signed-url package.tar.gz --json
 # {"url": "https://..."}
 
 gha-artifact-client list --json
-# {"artifacts": [{"id": "42", "name": "package.tar.gz", "size": 1234, "created_at": "2025-06-01T12:00:00+00:00", "digest": "sha256:..."}]}
+# {"artifacts": [{"id": 42, "name": "package.tar.gz", "size": 1234, "created_at": "2025-06-01T12:00:00+00:00", "digest": "sha256:..."}]}
 ```
 
 Credentials default to `ACTIONS_RUNTIME_TOKEN` and `ACTIONS_RESULTS_URL` from

@@ -45,7 +45,7 @@ def _expires_in_to_unix(expires_in: float | int) -> float:
 class ArtifactUploadResult:
     """Result of a successful artifact upload."""
 
-    id: str
+    id: int
     """The artifact ID assigned by GitHub Actions."""
 
     size: int
@@ -61,7 +61,7 @@ class ArtifactUploadResult:
 class ArtifactDeleteResult:
     """Result of a successful artifact deletion."""
 
-    id: str
+    id: int
     """The artifact ID of the deleted artifact."""
 
 
@@ -79,7 +79,7 @@ class ArtifactSignedURLResult:
 class ArtifactInfo:
     """A single artifact entry returned by :meth:`ArtifactClientApi.list_artifacts`."""
 
-    id: str
+    id: int
     """The artifact ID assigned by GitHub Actions."""
 
     name: str
@@ -306,7 +306,7 @@ class ArtifactClientApi:
 
         assert raw_id is not None and raw_size is not None and raw_digest is not None
         return ArtifactUploadResult(
-            id=str(raw_id),
+            id=int(raw_id),
             size=int(raw_size),
             digest=str(raw_digest),
         )
@@ -387,7 +387,7 @@ class ArtifactClientApi:
             )
 
         assert raw_id is not None
-        return ArtifactDeleteResult(id=str(raw_id))
+        return ArtifactDeleteResult(id=int(raw_id))
 
     def get_signed_artifact_url(self, name: str) -> ArtifactSignedURLResult:
         """Return a pre-signed download URL for a GitHub Actions artifact.
@@ -455,7 +455,7 @@ class ArtifactClientApi:
 
             infos.append(
                 ArtifactInfo(
-                    id=str(item["id"]),
+                    id=int(item["id"]),
                     name=str(item["name"]),
                     size=int(item["size"]),
                     created_at=created_at,

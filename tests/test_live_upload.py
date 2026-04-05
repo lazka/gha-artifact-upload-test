@@ -49,6 +49,6 @@ def test_live_upload_visible_via_pygithub(tmp_path: Path) -> None:
 
     assert artifact_data is not None
     assert artifact_data["name"] == artifact_name
-    assert any(str(artifact.get("id")) == result.id for artifact in run_artifacts)
+    assert any(artifact.get("id") == result.id for artifact in run_artifacts)
 
     assert artifact_data.get("digest") == f"sha256:{expected_digest}"

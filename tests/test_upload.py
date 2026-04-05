@@ -27,7 +27,7 @@ def _success_run(
     text: bool,
     capture_output: bool,
     check: bool,
-    stdout: str = json.dumps({"id": "7", "size": 5, "digest": "sha256:abc"}),
+    stdout: str = json.dumps({"id": 7, "size": 5, "digest": "sha256:abc"}),
 ) -> subprocess.CompletedProcess[str]:
     del text, capture_output, check
     return subprocess.CompletedProcess(
@@ -64,7 +64,7 @@ def test_upload_file_sends_name_and_file_path(
         return subprocess.CompletedProcess(
             args=args,
             returncode=0,
-            stdout=json.dumps({"id": "7", "size": 5, "digest": "sha256:abc"}),
+            stdout=json.dumps({"id": 7, "size": 5, "digest": "sha256:abc"}),
             stderr="",
         )
 
@@ -73,7 +73,7 @@ def test_upload_file_sends_name_and_file_path(
     api = _make_api()
     result = api.upload_artifact(artifact_file)
 
-    assert result == ArtifactUploadResult(id="7", size=5, digest="sha256:abc")
+    assert result == ArtifactUploadResult(id=7, size=5, digest="sha256:abc")
     payload = captured["payload"]
     assert payload == {
         "action": "upload",
@@ -106,7 +106,7 @@ def test_upload_symlink_uses_symlink_name(
         return subprocess.CompletedProcess(
             args=["node"],
             returncode=0,
-            stdout=json.dumps({"id": "7", "size": 5, "digest": "sha256:abc"}),
+            stdout=json.dumps({"id": 7, "size": 5, "digest": "sha256:abc"}),
             stderr="",
         )
 
@@ -142,7 +142,7 @@ def test_upload_file_passes_custom_name_in_payload(
         return subprocess.CompletedProcess(
             args=["node"],
             returncode=0,
-            stdout=json.dumps({"id": "9", "size": 5, "digest": "sha256:xyz"}),
+            stdout=json.dumps({"id": 9, "size": 5, "digest": "sha256:xyz"}),
             stderr="",
         )
 
@@ -151,7 +151,7 @@ def test_upload_file_passes_custom_name_in_payload(
     api = _make_api()
     result = api.upload_artifact(artifact_file, name="renamed.zip")
 
-    assert result == ArtifactUploadResult(id="9", size=5, digest="sha256:xyz")
+    assert result == ArtifactUploadResult(id=9, size=5, digest="sha256:xyz")
     payload = captured["payload"]
     assert payload["name"] == "renamed.zip"
     assert payload["filePath"] == str(artifact_file.resolve())
@@ -179,7 +179,7 @@ def test_upload_accepts_pathlike_node_executable(
         return subprocess.CompletedProcess(
             args=args,
             returncode=0,
-            stdout=json.dumps({"id": "5", "size": 5, "digest": "sha256:abc"}),
+            stdout=json.dumps({"id": 5, "size": 5, "digest": "sha256:abc"}),
             stderr="",
         )
 
@@ -219,7 +219,7 @@ def test_upload_file_includes_expires_at_when_requested(
         return subprocess.CompletedProcess(
             args=["node"],
             returncode=0,
-            stdout=json.dumps({"id": "1", "size": 2, "digest": "sha256:aaa"}),
+            stdout=json.dumps({"id": 1, "size": 2, "digest": "sha256:aaa"}),
             stderr="",
         )
 
@@ -255,7 +255,7 @@ def test_upload_file_includes_expires_in_when_requested(
         return subprocess.CompletedProcess(
             args=["node"],
             returncode=0,
-            stdout=json.dumps({"id": "1", "size": 2, "digest": "sha256:aaa"}),
+            stdout=json.dumps({"id": 1, "size": 2, "digest": "sha256:aaa"}),
             stderr="",
         )
 
@@ -319,7 +319,7 @@ def test_upload_file_includes_mime_type_when_requested(
         return subprocess.CompletedProcess(
             args=["node"],
             returncode=0,
-            stdout=json.dumps({"id": "1", "size": 2, "digest": "sha256:aaa"}),
+            stdout=json.dumps({"id": 1, "size": 2, "digest": "sha256:aaa"}),
             stderr="",
         )
 
@@ -354,7 +354,7 @@ def test_upload_file_omits_mime_type_when_not_specified(
         return subprocess.CompletedProcess(
             args=["node"],
             returncode=0,
-            stdout=json.dumps({"id": "1", "size": 2, "digest": "sha256:aaa"}),
+            stdout=json.dumps({"id": 1, "size": 2, "digest": "sha256:aaa"}),
             stderr="",
         )
 
@@ -402,7 +402,7 @@ def test_upload_fileobj_spools_to_temp_file(
         return subprocess.CompletedProcess(
             args=args,
             returncode=0,
-            stdout=json.dumps({"id": "3", "size": 4, "digest": "def"}),
+            stdout=json.dumps({"id": 3, "size": 4, "digest": "def"}),
             stderr="",
         )
 
@@ -412,7 +412,7 @@ def test_upload_fileobj_spools_to_temp_file(
     source = io.BytesIO(b"payload")
     result = api.upload_artifact_fileobj(source, name="payload.bin")
 
-    assert result == ArtifactUploadResult(id="3", size=4, digest="def")
+    assert result == ArtifactUploadResult(id=3, size=4, digest="def")
     assert captured["data"] == b"payload"
     payload = captured["payload"]
     assert payload["name"] == "payload.bin"
@@ -440,7 +440,7 @@ def test_staged_uploads_use_runner_temp_when_set(
         return subprocess.CompletedProcess(
             args=args,
             returncode=0,
-            stdout=json.dumps({"id": "1", "size": 1, "digest": "sha256:aaa"}),
+            stdout=json.dumps({"id": 1, "size": 1, "digest": "sha256:aaa"}),
             stderr="",
         )
 
@@ -479,7 +479,7 @@ def test_upload_bytes_delegates_to_fileobj(
         return subprocess.CompletedProcess(
             args=args,
             returncode=0,
-            stdout=json.dumps({"id": "6", "size": 7, "digest": "ghi"}),
+            stdout=json.dumps({"id": 6, "size": 7, "digest": "ghi"}),
             stderr="",
         )
 
@@ -491,7 +491,7 @@ def test_upload_bytes_delegates_to_fileobj(
         name="payload.bin",
     )
 
-    assert result == ArtifactUploadResult(id="6", size=7, digest="ghi")
+    assert result == ArtifactUploadResult(id=6, size=7, digest="ghi")
     assert captured["data"] == b"payload"
     assert captured["name"] == "payload.bin"
     assert captured["expires_in"] is None
