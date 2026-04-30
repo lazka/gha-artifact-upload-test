@@ -16,7 +16,7 @@
     "eslint": "^10.1.0",
     "eslint-plugin-jsdoc": "^62.8.0",
     "globals": "^17.4.0",
-    "rolldown": "^1.0.0-rc.12",
+    "rolldown": "^1.0.0-rc.17",
     "rollup-plugin-sbom": "^3.1.0",
     "typescript": "^6.0.2"
   }
